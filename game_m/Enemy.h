@@ -3,15 +3,16 @@
 
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 #include <cmath>
+#include <string>
 
 class Enemy {
 public:
     sf::Sprite staticSprite;
     sf::Sprite walkSprite;
     sf::Sprite attackSprite;
-
     sf::Texture staticTex;
     sf::Texture walkTex;
     sf::Texture attackTex;
@@ -21,43 +22,54 @@ public:
     bool isLoaded;
 
     float health;
+    float hitCooldown; 
     bool showHint;
+
     int currentState;
 
-    Enemy() : isWalkLoaded(false), isAttackLoaded(false), isLoaded(false), health(60.f), showHint(false), currentState(0) {}
+    Enemy() : isWalkLoaded(false), isAttackLoaded(false), isLoaded(false), health(60.f), hitCooldown(0.f), showHint(false), currentState(0) {}
 
-    void init(std::string staticFile, std::string walkFile, std::string attackFile, sf::Vector2f startPos) {
-        if (!staticTex.loadFromFile(staticFile)) {
-            std::cout << "Error: " << staticFile << " not found!" << std::endl;
+    void init(std::string textureStaticFile, std::string textureWalkFile, std::string textureAttackFile, sf::Vector2f startPos) {
+        if (!staticTex.loadFromFile(textureStaticFile)) {
+            std::cout << "Warning: " << textureStaticFile << " not found. Using " << textureWalkFile << " as fallback for static state." << std::endl;
+            if (!staticTex.loadFromFile(textureWalkFile)) {
+                std::cout << "Error: Failed to load fallback texture!" << std::endl;
+            }
         }
-        staticTex.setSmooth(false);
 
-        if (!walkTex.loadFromFile(walkFile)) {
-            std::cout << "Warning: " << walkFile << " not found!" << std::endl;
-            isWalkLoaded = false;
-        }
-        else {
-            walkTex.setSmooth(false);
+        if (walkTex.loadFromFile(textureWalkFile)) {
             isWalkLoaded = true;
         }
-
-        if (!attackTex.loadFromFile(attackFile)) {
-            std::cout << "Warning: " << attackFile << " not found!" << std::endl;
-            isAttackLoaded = false;
-        }
         else {
-            attackTex.setSmooth(false);
+            std::cout << "Error: " << textureWalkFile << " not found!" << std::endl;
+        }
+
+        if (attackTex.loadFromFile(textureAttackFile)) {
             isAttackLoaded = true;
         }
+        else {
+            std::cout << "Error: " << textureAttackFile << " not found!" << std::endl;
+        }
+
+        staticTex.setSmooth(false);
+        walkTex.setSmooth(false);
+        attackTex.setSmooth(false);
 
         float targetHeight = 189.f;
-
         staticSprite.setTexture(staticTex);
+
         int staticW = static_cast<int>(staticTex.getSize().x);
         int staticH = static_cast<int>(staticTex.getSize().y);
-        staticSprite.setTextureRect(sf::IntRect(0, 0, staticW, staticH));
 
-        staticSprite.setOrigin(static_cast<float>(staticW) / 2.f, static_cast<float>(staticH));
+        if (staticW > 200) {
+            staticSprite.setTextureRect(sf::IntRect(0, 0, 150, 234));
+            staticSprite.setOrigin(75.f, 234.f);
+        }
+        else {
+            staticSprite.setTextureRect(sf::IntRect(0, 0, staticW, staticH));
+            staticSprite.setOrigin(static_cast<float>(staticW) / 2.f, static_cast<float>(staticH));
+        }
+
         float scaleFactorStatic = targetHeight / staticSprite.getLocalBounds().height;
         staticSprite.setScale(scaleFactorStatic, scaleFactorStatic);
         staticSprite.setPosition(startPos);
@@ -109,10 +121,67 @@ public:
     }
 
     void move(float offsetX, float offsetY) {
+        if (hitCooldown > 0.f) hitCooldown -= 0.4f; 
+
+        if (offsetX != 0.f || offsetY != 0.f) {
+            static float animFrame = 0.f;
+            animFrame += 0.05f;
+            if (animFrame >= 4.f) animFrame = 0.f;
+            setState(1, static_cast<int>(animFrame));
+            setFacing(offsetX > 0);
+        }
+        else {
+            setState(0, 0);
+        }
+
         staticSprite.move(offsetX, offsetY);
         walkSprite.move(offsetX, offsetY);
         attackSprite.move(offsetX, offsetY);
     }
+
+    void checkPlayerCollision(Player& hero, float baseDamage, float difficultyModifier, bool lookOpenDialogue, sf::Sound& hitSound) {
+        if (health > 0 && !lookOpenDialogue) {
+
+            if (hitCooldown > 0.f) {
+                hitCooldown -= 1.0f;
+                setState(2, 0);
+            }
+            else {
+                hitCooldown = 0.f;
+            }
+
+            if (hero.sprite.getGlobalBounds().intersects(getGlobalBounds())) {
+
+                if (hitCooldown <= 0.f) {
+                    setState(2, 0);
+
+                    float cleanDamage = 10.f;
+                    if (difficultyModifier < 0.8f) cleanDamage = 5.f;
+                    else if (difficultyModifier > 1.2f) cleanDamage = 15.f;
+
+                    hero.stats.health -= cleanDamage;
+                    hero.health = hero.stats.health;
+
+                    hitSound.play();
+
+                    hero.showMessage(L"ÂAÑ ÓÄAÐÈËÈ!", sf::Color::Red);
+                    hitCooldown = 45.f;
+                }
+
+                float currentX = getPosition().x;
+                float currentY = getPosition().y;
+                if (currentX > hero.sprite.getPosition().x) {
+                    setPosition(currentX + 110.f, currentY);
+                }
+                else {
+                    setPosition(currentX - 110.f, currentY);
+                }
+            }
+        }
+    }
+
+
+
 
     void setPosition(float x, float y) {
         staticSprite.setPosition(x, y);
@@ -134,7 +203,6 @@ public:
 
     void draw(sf::RenderWindow& window) {
         if (!isLoaded) return;
-
         if (health > 0) {
             if (currentState == 1 && isWalkLoaded) {
                 window.draw(walkSprite);

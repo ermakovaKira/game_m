@@ -18,7 +18,7 @@ public:
     int selectedSlot;
     std::vector<std::string> displayOrder;
 
-    // Пересборка логики под прозрачные .png иконки
+
 public:
     Inventory() {
         uiBox.setSize(sf::Vector2f(500.f, 200.f));

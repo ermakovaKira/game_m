@@ -30,6 +30,9 @@
     <ClCompile Include="GameManager.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="MenuManager.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Player.h">
@@ -87,6 +90,15 @@
       <Filter>Исходные файлы</Filter>
     </ClInclude>
     <ClInclude Include="BaseScene.h">
+      <Filter>Исходные файлы</Filter>
+    </ClInclude>
+    <ClInclude Include="MedScene.h">
+      <Filter>Исходные файлы</Filter>
+    </ClInclude>
+    <ClInclude Include="ServerScene.h">
+      <Filter>Исходные файлы</Filter>
+    </ClInclude>
+    <ClInclude Include="MenuManager.h">
       <Filter>Исходные файлы</Filter>
     </ClInclude>
   </ItemGroup>

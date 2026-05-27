@@ -14,7 +14,7 @@
 #include "DialogueDatabase.h"
 
 class TechScene {
-public: // ВСЕ МЕТОДЫ И ПЕРЕМЕННЫЕ ОТКРЫТЫ ДЛЯ GAMEMANAGER
+public: 
     sf::Texture bgTex;
     sf::Sprite bgSprite;
     bool isLoaded;
@@ -185,10 +185,12 @@ public: // ВСЕ МЕТОДЫ И ПЕРЕМЕННЫЕ ОТКРЫТЫ ДЛЯ GAMEMANAGER
     void updateDistances(float playerX, bool dialogueIsOpen, StoryManager& story) {
         nearCorpse = (std::abs(playerX - 450.f) < 65.f);
         techCorpse.showHint = (nearCorpse && !dialogueIsOpen && !pdaFound);
+
         nearTerminal = (std::abs(playerX - 1100.f) < 70.f);
         techTerminal.showHint = (nearTerminal && !dialogueIsOpen && !terminalBypassed);
+
         nearValve = (std::abs(playerX - 750.f) < 60.f);
-        valvePipe.showHint = (nearValve && !dialogueIsOpen && terminalBypassed && !gasCleared);
+        valvePipe.showHint = (nearValve && !dialogueIsOpen && terminalBypassed);
 
         story.techPdaFound = pdaFound;
         story.techTerminalBypassed = terminalBypassed;
@@ -245,7 +247,7 @@ public: // ВСЕ МЕТОДЫ И ПЕРЕМЕННЫЕ ОТКРЫТЫ ДЛЯ GAMEMANAGER
             window.draw(hint);
         }
         if (valvePipe.showHint) {
-            sf::Text hint(L"Нажмите E (Провернуть вентиль)", font, 12);
+            sf::Text hint(gasCleared ? L"Нажмите E (Спуститься в Медблок)" : L"Нажмите E (Провернуть вентиль)", font, 12);
             hint.setPosition(750.f - 75.f, 220.f);
             window.draw(hint);
         }

@@ -96,29 +96,25 @@ public:
             if (zombieFrame >= 4.f) zombieFrame = 0.f;
 
             if (story.hallwayIntroPlayed && !dialogue.isOpen) {
-                if (std::abs(playerX - zombieX) < 65.f) {
-                    zombie.setState(2, static_cast<int>(zombieFrame));
-                    hero.stats.health -= 0.2f * time;
-                    if (hero.stats.health < 0.f) hero.stats.health = 0.f;
-                    zombie.setFacing(zombieX < playerX);
-                }
-                else {
+                if (zombie.hitCooldown <= 0.f) {
                     zombie.setState(1, static_cast<int>(zombieFrame));
-                    if (zombieX < playerX - 10.f) {
-                        zombie.move(0.04f * time, 0.f);
-                        zombie.setFacing(true);
-                    }
-                    else if (zombieX > playerX + 10.f) {
-                        zombie.move(-0.04f * time, 0.f);
-                        zombie.setFacing(false);
-                    }
+                }
+
+                if (zombieX < playerX - 10.f) {
+                    zombie.move(0.04f * time, 0.f);
+                    zombie.setFacing(true);
+                }
+                else if (zombieX > playerX + 10.f) {
+                    zombie.move(-0.04f * time, 0.f);
+                    zombie.setFacing(false);
                 }
             }
+
             keyPosition = sf::Vector2f(zombie.getPosition().x, 365.f);
             keyGlow.setPosition(keyPosition);
         }
-        else if (zombie.health <= 0) {
-            zombie.setState(0);
+        else {
+            zombie.setState(0); 
         }
 
         if (isAmbushTriggered && zombieAmbush.health > 0 && !dialogue.isOpen) {
@@ -127,30 +123,26 @@ public:
             ambushFrame += 0.007f * time;
             if (ambushFrame >= 4.f) ambushFrame = 0.f;
 
-            if (std::abs(playerX - ambushX) < 65.f) {
-                zombieAmbush.setState(2, static_cast<int>(ambushFrame));
-                hero.stats.health -= 0.25f * time;
-                if (hero.stats.health < 0.f) hero.stats.health = 0.f;
-                zombieAmbush.setFacing(ambushX < playerX);
-            }
-            else {
+
+            if (zombieAmbush.hitCooldown <= 0.f) {
                 zombieAmbush.setState(1, static_cast<int>(ambushFrame));
-                if (zombieAmbush.getPosition().x < playerX - 10.f) {
-                    zombieAmbush.move(0.07f * time, 0.f);
-                    zombieAmbush.setFacing(true);
-                }
-                else if (zombieAmbush.getPosition().x > playerX + 10.f) {
-                    zombieAmbush.move(-0.07f * time, 0.f);
-                    zombieAmbush.setFacing(false);
-                }
+            }
+
+            if (zombieAmbush.getPosition().x < playerX - 10.f) {
+                zombieAmbush.move(0.07f * time, 0.f);
+                zombieAmbush.setFacing(true);
+            }
+            else if (zombieAmbush.getPosition().x > playerX + 10.f) {
+                zombieAmbush.move(-0.07f * time, 0.f);
+                zombieAmbush.setFacing(false);
             }
         }
 
         if (!dialogue.isOpen) {
             float markX = mark.getPosition().x;
             float targetMarkX = playerX + (hero.faceRight ? -55.f : 55.f);
-
             static float markFrame = 0.f;
+
             if (std::abs(markX - targetMarkX) > 15.f) {
                 markFrame += 0.0025f * time;
                 if (markFrame >= 4.f) markFrame = 0.f;
@@ -169,7 +161,7 @@ public:
                 }
             }
             else {
-                mark.setState(false);
+                mark.setState(false); 
                 if (hero.faceRight) {
                     mark.staticSprite.setScale(-std::abs(mark.staticSprite.getScale().x), mark.staticSprite.getScale().y);
                 }
@@ -179,8 +171,10 @@ public:
             }
         }
 
+
         updateDistances(playerX, dialogue.isOpen, story, hero.inventory.items["Keys"]);
     }
+
 
     void updateDistances(float playerX, bool dialogueIsOpen, StoryManager& story, int hasKeys) {
         nearZombie = (std::abs(playerX - zombie.getPosition().x) < 60.f);
@@ -203,6 +197,7 @@ public:
     void handleInteraction(Player& hero, StoryManager& story, DialogueSystem& dialogue, DialogueDatabase& dialogueDb) {
         if (nearKey && zombie.health <= 0 && !isKeyPickedUp) {
             isKeyPickedUp = true;
+            story.hallwayKeysFound = true; 
             hero.inventory.addItem("Keys", 1);
             hero.showMessage(L"ÏÎËÓ×ÅÍÎ: ÑÂßÇÊÀ ÊËÞ×ÅÉ ÝËÅÊÒÐÈÊÀ", sf::Color::Green);
             return;
@@ -215,6 +210,7 @@ public:
 
         if (nearNote && !noteRead) {
             noteRead = true;
+            story.hallwayNote2Read = true; 
             hero.inventory.addItem("Note2", 1);
             dialogue.startDialogue(dialogueDb.getDialogue("hallway_note_uncle_tolya"));
             return;
@@ -232,7 +228,6 @@ public:
         if (zombie.health <= 0 && !isKeyPickedUp) {
             window.draw(keyGlow);
         }
-
         mark.draw(window);
 
         sf::Font font;
@@ -280,4 +275,3 @@ public:
 };
 
 #endif
-

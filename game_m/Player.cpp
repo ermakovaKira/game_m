@@ -3,8 +3,12 @@
 #include <iostream>
 
 Player::Player(std::string pathIdle, std::string pathShoot, int width, int height) {
+    health = 100.f;
+    stats.health = 100.f;
+    stats.maxHealth = 100.f;
     textureIdle.loadFromFile(pathIdle);
     textureShoot.loadFromFile(pathShoot);
+    invulTimer = 0.f;
 
 
     textureIdle.setSmooth(false);
@@ -33,38 +37,22 @@ Player::Player(std::string pathIdle, std::string pathShoot, int width, int heigh
         messageText.setOutlineColor(sf::Color::Black);
     }
     isFlashActive = false;
-    flashTimer = 0.f;
+    invulDuration = 0.f;
+
 }
 
 
 
 void Player::handleInput(sf::Event& event) {
-
-    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Num1) {
-        if (inventory.items["Medkit"] > 0) {
-            if (stats.health >= 100.f) {
-                showMessage(L"Здоровье уже на максимуме!", sf::Color::Red);
-                return;
-            }
-            inventory.items["Medkit"]--;
-            float healAmount = 30.f;
-            if (db != nullptr) {
-                healAmount = db->data["Medkit"].effectValue;
-            }
-            stats.health = std::min(100.f, stats.health + healAmount);
-            health = stats.health;
-            std::cout << "Ева использовала аптечку. HP: " << stats.health << std::endl;
-        }
-    }
-
-
-    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space && !isShooting) {
+    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space &&
+        !isShooting) {
         if (inventory.items["Ammo"] > 0) {
             inventory.items["Ammo"]--;
             isShooting = true;
             currentFrame = 0.f;
             sprite.setTexture(textureShoot);
             animationClock.restart();
+
             std::cout << "Выстрел! Патронов осталось: " << inventory.items["Ammo"] << std::endl;
         }
         else {
@@ -75,21 +63,15 @@ void Player::handleInput(sf::Event& event) {
 
 
 
+
 void Player::update(float time) {
 
-    if (isFlashActive) {
-        speed = 0.15f; 
-        flashTimer -= time;
-        if (flashTimer <= 0.f) {
-            isFlashActive = false;
-            speed = 0.10f;
-            showMessage(L"Действие бодрящего напитка закончилось.", sf::Color::White);
-        }
+    if (invulTimer > 0.f) {
+        invulTimer -= 1.0f;
     }
     else {
-        speed = 0.10f; 
+        invulTimer = 0.f;
     }
-
 
     if (!isShooting) {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
@@ -156,7 +138,9 @@ void Player::update(float time) {
  
     sprite.setPosition(sprite.getPosition().x, 210.f);
 
-
+    if (invulTimer > 0.f) {
+        invulTimer -= 1.f;
+    }
     if (sprite.getPosition().x < 0.f) sprite.setPosition(0.f, 210.f);
     if (sprite.getPosition().x > 1530.f) sprite.setPosition(1530.f, 210.f);
 }

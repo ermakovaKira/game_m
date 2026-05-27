@@ -21,7 +21,6 @@ public:
 
     NPC mark;
 
-    // ОБЪЯВЛЯЕМ АНИМИРОВАННОГО МУТАНТА-БОССА
     sf::Sprite bossSprite;
     sf::Texture bossTex;
     float bossHealth;
@@ -39,26 +38,30 @@ public:
     bool pointHitTracked[4];
     bool wasSpacePressedLastFrame;
 
-    bool nearPanel, nearElevator;
+    bool nearPanel, nearElevator, nearShield;
     bool hackStarted;
     bool hackSuccess;
     bool isMinigameActive;
+    bool ammoCollected;
 
     Interactable securityPanel;
     Interactable offlineElevator;
+    Interactable fireShield;
 
 public:
     ElevatorScene()
         : securityPanel("laptop_sprite.png", sf::Vector2f(80.f, 210.f), "panel_hack", 45.f, 60.f),
-        offlineElevator("laptop_sprite.png", sf::Vector2f(800.f, 210.f), "elevator_shaft", 120.f, 110.f)
+        offlineElevator("laptop_sprite.png", sf::Vector2f(800.f, 210.f), "elevator_shaft", 120.f, 110.f),
+        fireShield("laptop_sprite.png", sf::Vector2f(1450.f, 210.f), "fire_shield", 50.f, 60.f)
     {
         isLoaded = false;
-        nearPanel = nearElevator = false;
+        nearPanel = nearElevator = nearShield = false;
         hackStarted = false;
         hackSuccess = false;
         isMinigameActive = false;
         wasSpacePressedLastFrame = false;
         isBossSpawned = false;
+        ammoCollected = false;
         bossHealth = 100.f;
         bossAnimFrame = 0.f;
 
@@ -98,18 +101,13 @@ public:
         bgSprite.setTexture(bgTex, true);
         bgSprite.setScale(1600.f / bgTex.getSize().x, 400.f / bgTex.getSize().y);
 
-        // ИСПРАВЛЕНО: Загружаем существующий файл zombie_walk.png и берем первый кадр!
         if (bossTex.loadFromFile("zombie_walk.png")) {
             bossSprite.setTexture(bossTex);
-            // Если текстура - это спрайтшит, вырезаем первый кадр (допустим 60х60 или 40х40, подгони под свой шаг)
             bossSprite.setTextureRect(sf::IntRect(0, 0, bossTex.getSize().x / 4, bossTex.getSize().y));
             bossSprite.setOrigin((bossTex.getSize().x / 4) / 2.f, bossTex.getSize().y);
-            bossSprite.setScale(-1.4f, 1.4f); // Босс в полтора раза крупнее обычного зомби
-            bossSprite.setColor(sf::Color(240, 100, 100)); // Придаем яростный багровый оттенок
-            bossSprite.setPosition(800.f, 385.f); // Ставим ровно на линию пола
-        }
-        else {
-            std::cout << "CRITICAL ERROR: zombie_walk.png not found for boss!" << std::endl;
+            bossSprite.setScale(-1.4f, 1.4f);
+            bossSprite.setColor(sf::Color(240, 100, 100));
+            bossSprite.setPosition(800.f, 385.f);
         }
 
         mark.init("npc_sprite.png", "mark_move.png", sf::Vector2f(1350.f, 385.f));
@@ -135,23 +133,19 @@ public:
 
         float secureTime = (time > 100.f) ? 16.f : time;
 
-        // ЛОГИКА ПОВЕДЕНИЯ И АНИМАЦИИ МУТАНТА-БОССА
         if (isBossSpawned && bossHealth > 0 && !dialogue.isOpen) {
             float bX = bossSprite.getPosition().x;
 
-            // Анимация ходьбы босса
             bossAnimFrame += 0.005f * secureTime;
             if (bossAnimFrame >= 4.f) bossAnimFrame = 0.f;
             int frameWidth = bossTex.getSize().x / 4;
             bossSprite.setTextureRect(sf::IntRect(int(bossAnimFrame) * frameWidth, 0, frameWidth, bossTex.getSize().y));
 
-            // Преследование Евы
             if (!isMinigameActive) {
                 if (bX < playerX - 15.f) bossSprite.move(0.04f * secureTime, 0.f);
                 else if (bX > playerX + 15.f) bossSprite.move(-0.04f * secureTime, 0.f);
             }
 
-            // Нанесение урона в упор
             if (std::abs(playerX - bX) < 65.f) {
                 hero.stats.health -= 0.12f * secureTime;
                 hero.health = hero.stats.health;
@@ -220,6 +214,7 @@ public:
                     if (successfulHits >= 4) {
                         isMinigameActive = false;
                         hackSuccess = true;
+                        story.elevatorHackSuccess = true;
                         hero.showMessage(L"СИСТЕМА ПЕРЕЗАПУЩЕНА! ЛИФТ ОТКРЫТ!", sf::Color::Green);
                     }
                 }
@@ -230,7 +225,6 @@ public:
             return;
         }
 
-        // ИИ ПРИКРЫТИЯ МАРКА (Марк автоматически пятится за Евой и прикрывает её)
         if (!dialogue.isOpen) {
             float markX = mark.getPosition().x;
             float targetMarkX = playerX + (hero.faceRight ? -55.f : 55.f);
@@ -263,6 +257,9 @@ public:
 
         nearElevator = (std::abs(playerX - 800.f) < 90.f);
         offlineElevator.showHint = (nearElevator && !dialogueIsOpen);
+
+        nearShield = (std::abs(playerX - 1450.f) < 60.f);
+        fireShield.showHint = (nearShield && !dialogueIsOpen && !ammoCollected);
     }
 
     void handleInteraction(Player& hero, StoryManager& story, DialogueSystem& dialogue, DialogueDatabase& dialogueDb) {
@@ -277,7 +274,15 @@ public:
                     resetMinigame();
                 }
                 isMinigameActive = true;
+                story.elevatorInspected = true;
             }
+            return;
+        }
+
+        if (nearShield && !ammoCollected) {
+            ammoCollected = true;
+            hero.inventory.addItem("Ammo", 30);
+            hero.showMessage(L"НАЙДЕН АВАРИЙНЫЙ ЗАПАС СЕКТОРА (+30 ПАТРОНОВ)", sf::Color::Green);
             return;
         }
 
@@ -325,6 +330,12 @@ public:
         if (securityPanel.showHint) {
             sf::Text hint(isMinigameActive ? L"ВЗЛОМ В ПРОЦЕССЕ..." : L"Нажмите E (Подключить ноутбук)", font, 12);
             hint.setPosition(80.f - 85.f, 220.f);
+            window.draw(hint);
+        }
+
+        if (fireShield.showHint) {
+            sf::Text hint(L"Нажмите E (Открыть пожарный щиток)", font, 12);
+            hint.setPosition(1450.f - 95.f, 220.f);
             window.draw(hint);
         }
     }

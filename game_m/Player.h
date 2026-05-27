@@ -32,6 +32,9 @@ public:
     bool isShooting;
     bool faceRight;
     float health;
+    float invulTimer;
+    sf::Clock invulTimerClock;
+    float invulDuration;
     Inventory inventory;
     PlayerStats stats;
     class ItemDatabase* db;
@@ -41,7 +44,6 @@ public:
     sf::Text messageText;
     sf::Font messageFont;
     float messageTimer;
-    float flashTimer;
     bool isFlashActive;
 
     Player(std::string pathIdle, std::string pathShoot, int width, int height);
