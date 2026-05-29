@@ -64,8 +64,13 @@ private:
 
     void rebuildLeaderboard();
     void drawButton(sf::RenderWindow& window, sf::Vector2f pos, const std::wstring& text, bool isHovered, bool isDisabled = false);
-
+    bool isButtonClicked(sf::Vector2f mousePos, sf::Vector2f btnPos, sf::Vector2f btnSize);
+    float handleSliderLogic(sf::Vector2f mousePos, sf::Vector2f trackPos, float trackWidth);
+    void drawVolumeSlider(sf::RenderWindow& window, const std::wstring& title, float volume, sf::Vector2f pos);
+    int checkUserInDatabase(const std::wstring& checkName, const std::wstring& checkPass, bool verifyPassword);
+    std::wstring authErrorMessage;
 public:
+    void updateMenu(sf::RenderWindow& window, sf::View& uiView);
     MenuManager();
     MenuState getState() const;
     void setState(MenuState state);

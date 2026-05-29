@@ -65,9 +65,8 @@ void Player::handleInput(sf::Event& event) {
 
 
 void Player::update(float time) {
-
     if (invulTimer > 0.f) {
-        invulTimer -= 1.0f;
+        invulTimer -= 1.0f * time;
     }
     else {
         invulTimer = 0.f;
@@ -77,8 +76,6 @@ void Player::update(float time) {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
             sprite.move(-speed * time, 0.f);
             faceRight = false;
-
-
             if (animationClock.getElapsedTime().asMilliseconds() > 110) {
                 currentFrame += 1.f;
                 if (currentFrame >= 4.f) currentFrame = 0.f;
@@ -89,61 +86,50 @@ void Player::update(float time) {
         }
         else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
             sprite.move(speed * time, 0.f);
-            faceRight = true; 
-
+            faceRight = true;
             if (animationClock.getElapsedTime().asMilliseconds() > 110) {
                 currentFrame += 1.f;
                 if (currentFrame >= 4.f) currentFrame = 0.f;
                 animationClock.restart();
             }
-
             sprite.setTexture(textureIdle);
             sprite.setTextureRect(sf::IntRect(int(currentFrame) * w, 0, w, h));
         }
         else {
-
             sprite.setTexture(textureIdle);
             if (faceRight) sprite.setTextureRect(sf::IntRect(0, 0, w, h));
             else sprite.setTextureRect(sf::IntRect(w, 0, -w, h));
         }
     }
 
-
     if (isShooting) {
         sprite.setTexture(textureShoot);
-
         if (animationClock.getElapsedTime().asMilliseconds() > 70) {
             currentFrame += 1.f;
             animationClock.restart();
         }
-
-
         if (currentFrame < 4.f) {
             int frameOffset = int(currentFrame) * w;
             if (faceRight) sprite.setTextureRect(sf::IntRect(frameOffset, 0, w, h));
             else sprite.setTextureRect(sf::IntRect(frameOffset + w, 0, -w, h));
         }
         else {
-  
             isShooting = false;
             currentFrame = 0.f;
         }
     }
 
-
     if (messageTimer > 0.f) {
         messageTimer -= 0.5f * time;
     }
 
- 
     sprite.setPosition(sprite.getPosition().x, 210.f);
 
-    if (invulTimer > 0.f) {
-        invulTimer -= 1.f;
-    }
+
     if (sprite.getPosition().x < 0.f) sprite.setPosition(0.f, 210.f);
-    if (sprite.getPosition().x > 1530.f) sprite.setPosition(1530.f, 210.f);
+    if (sprite.getPosition().x > 2450.f) sprite.setPosition(2450.f, 210.f);
 }
+
 
 
 void Player::draw(sf::RenderWindow& window) {

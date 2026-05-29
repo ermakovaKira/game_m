@@ -72,6 +72,13 @@ private:
     void update(float time);
     void render();
     void triggerAchievementNotification(int index);
+    bool isButtonClicked(sf::Vector2f mousePos, sf::Vector2f btnPos, sf::Vector2f btnSize);
+    float handleSliderLogic(sf::Vector2f mousePos, sf::Vector2f trackPos, float trackWidth);
+    void drawVolumeSlider(const std::wstring& title, float volume, sf::Vector2f pos);
+    void resetGameSession();
+    void applyLoadedUserData();
+    void syncGameCamera(float minX, float maxX);
+    void initNewGameSession();
     bool isGamePassed;
     sf::Music menuMusic;
     sf::Music gameMusic;

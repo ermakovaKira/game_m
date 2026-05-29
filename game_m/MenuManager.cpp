@@ -129,67 +129,63 @@ void MenuManager::saveUserToBinary(std::wstring oldName) {
     outFile.close();
 }
 
-void MenuManager::handleTextEvent(sf::Event event) {
-    if (event.type == sf::Event::TextEntered) {
-        wchar_t charEntered = event.text.unicode;
-        if (currentState == AUTH_SCREEN) {
-            if (isUsernameInputActive) {
-                if (charEntered == L'\b') { if (!inputUsername.empty()) inputUsername.pop_back(); }
-                else if (charEntered >= 32 && inputUsername.size() < 30) inputUsername += charEntered;
-            }
-            else if (isPasswordInputActive) {
-                if (charEntered == L'\b') { if (!inputPassword.empty()) inputPassword.pop_back(); }
-                else if (charEntered >= 32 && inputPassword.size() < 30) inputPassword += charEntered;
-            }
-        }
-        else if (currentState == CHANGE_NAME_SCREEN || currentState == CHANGE_PASS_SCREEN) {
-            if (charEntered == L'\b') { if (!editBuffer.empty()) editBuffer.pop_back(); }
-            else if (charEntered >= 32 && editBuffer.size() < 30) editBuffer += charEntered;
-        }
-    }
-}
-
 void MenuManager::handleMouseClick(sf::Vector2f mPos) {
     if (currentState == AUTH_SCREEN) {
-        if (sf::FloatRect(260.f, 120.f, 280.f, 25.f).contains(mPos)) {
+        if (isButtonClicked(mPos, sf::Vector2f(260.f, 120.f), sf::Vector2f(280.f, 25.f))) {
             isUsernameInputActive = true;
             isPasswordInputActive = false;
+            authErrorMessage = L"";
+            return;
         }
-        if (sf::FloatRect(260.f, 170.f, 280.f, 25.f).contains(mPos)) {
+        if (isButtonClicked(mPos, sf::Vector2f(260.f, 170.f), sf::Vector2f(280.f, 25.f))) {
             isUsernameInputActive = false;
             isPasswordInputActive = true;
+            authErrorMessage = L"";
+            return;
         }
-        if (sf::FloatRect(300.f, 230.f, 200.f, 30.f).contains(mPos)) {
-            if (inputUsername.empty() || inputPassword.empty()) return;
-            if (!loadUserFromFile(inputUsername, inputPassword)) {
-                std::memset(&currentUser, 0, sizeof(UserData));
-                std::wcscpy((wchar_t*)currentUser.username, inputUsername.c_str());
-                std::wcscpy((wchar_t*)currentUser.password, inputPassword.c_str());
-                currentUser.lastScene = 0;
-                currentUser.playerHealth = 100.f;
-                currentUser.currentTheme = 0;
-                currentUser.difficultySetting = 1;
-                currentUser.musicVolume = 80.f;
-                currentUser.soundVolume = 80.f;
+        if (isButtonClicked(mPos, sf::Vector2f(300.f, 230.f), sf::Vector2f(200.f, 30.f))) {
+            authErrorMessage = L"";
 
-                std::memset(currentUser.achievements, 0, sizeof(currentUser.achievements));
-
-                isUserLoggedIn = true;
-                saveUserToBinary();
+            // ÄÎÁÀÂËÅÍÎ: Åñëè ëîãèí ñóùåñòâóåò, íî ïàðîëü íå ïîäîø¸ë — âûâîäèì îøèáêó è áëîêèðóåì âõîä
+            int dbStatus = checkUserInDatabase(inputUsername, inputPassword, true);
+            if (dbStatus == 2) {
+                authErrorMessage = L"Íåâåðíûé ïàðîëü. Ïîïðîáóéòå åù¸ ðàç.";
+                return;
             }
-            currentState = MAIN_MENU;
-        }
 
+            if (loadUserFromFile(inputUsername, inputPassword)) {
+                isUserLoggedIn = true;
+                currentState = MAIN_MENU;
+            }
+            else {
+                std::string sName(inputUsername.begin(), inputUsername.end());
+                std::string sPass(inputPassword.begin(), inputPassword.end());
+                std::memset(&currentUser, 0, sizeof(UserData));
+                std::strncpy(currentUser.username, sName.c_str(), 31);
+                std::strncpy(currentUser.password, sPass.c_str(), 31);
+                currentUser.playerHealth = 100.f;
+                currentUser.musicVolume = 100.f;
+                currentUser.soundVolume = 100.f;
+                currentUser.laptopCount = 1;
+                saveUserToBinary();
+                isUserLoggedIn = true;
+                currentState = MAIN_MENU;
+            }
+            return;
+        }
     }
     else if (currentState == MAIN_MENU) {
         if (sf::FloatRect(300.f, 130.f, 200.f, 30.f).contains(mPos) && currentUser.lastScene == 0) return;
+        if (sf::FloatRect(300.f, 90.f, 200.f, 30.f).contains(mPos)) return;
         if (sf::FloatRect(300.f, 170.f, 200.f, 30.f).contains(mPos)) currentState = DIFFICULTY_CHOICE;
         if (sf::FloatRect(300.f, 210.f, 200.f, 30.f).contains(mPos)) currentState = ACHIEVEMENTS_SCREEN;
         if (sf::FloatRect(300.f, 250.f, 200.f, 30.f).contains(mPos)) {
             currentState = ACCOUNT_CABINET;
             editBuffer.clear();
+            return; 
         }
     }
+
     else if (currentState == DIFFICULTY_CHOICE) {
         if (sf::FloatRect(300.f, 100.f, 200.f, 30.f).contains(mPos)) {
             currentUser.difficultySetting = 0;
@@ -212,9 +208,10 @@ void MenuManager::handleMouseClick(sf::Vector2f mPos) {
         if (sf::FloatRect(300.f, 270.f, 200.f, 30.f).contains(mPos)) currentState = MAIN_MENU;
     }
     else if (currentState == ACCOUNT_CABINET) {
-        if (sf::FloatRect(300.f, 90.f, 200.f, 30.f).contains(mPos)) {
+        if (isButtonClicked(mPos, sf::Vector2f(300.f, 90.f), sf::Vector2f(200.f, 30.f))) {
             currentState = CHANGE_NAME_SCREEN;
-            editBuffer = (wchar_t*)currentUser.username;
+            editBuffer.clear();
+            return;
         }
         if (sf::FloatRect(300.f, 130.f, 200.f, 30.f).contains(mPos)) {
             currentState = CHANGE_PASS_SCREEN;
@@ -230,29 +227,35 @@ void MenuManager::handleMouseClick(sf::Vector2f mPos) {
         if (sf::FloatRect(300.f, 260.f, 200.f, 30.f).contains(mPos)) currentState = MAIN_MENU;
     }
     else if (currentState == THEME_CHOICE) {
-        if (sf::FloatRect(300.f, 90.f, 200.f, 15.f).contains(mPos)) {
+        if (sf::FloatRect(300.f, 90.f, 200.f, 20.f).contains(mPos)) {
             float newVol = ((mPos.x - 300.f) / 200.f) * 100.f;
             currentUser.musicVolume = std::max(0.f, std::min(100.f, newVol));
             saveUserToBinary();
+            return;
         }
-        if (sf::FloatRect(300.f, 140.f, 200.f, 15.f).contains(mPos)) {
+        if (sf::FloatRect(300.f, 140.f, 200.f, 20.f).contains(mPos)) {
             float newVol = ((mPos.x - 300.f) / 200.f) * 100.f;
             currentUser.soundVolume = std::max(0.f, std::min(100.f, newVol));
             saveUserToBinary();
+            return;
         }
         if (sf::FloatRect(300.f, 180.f, 200.f, 30.f).contains(mPos)) {
             activeTheme = 0;
             currentUser.currentTheme = 0;
             saveUserToBinary();
+            return;
         }
         if (sf::FloatRect(300.f, 220.f, 200.f, 30.f).contains(mPos)) {
             activeTheme = 1;
             currentUser.currentTheme = 1;
             saveUserToBinary();
+            return;
         }
-        if (sf::FloatRect(300.f, 280.f, 200.f, 30.f).contains(mPos)) currentState = ACCOUNT_CABINET;
+        if (sf::FloatRect(300.f, 280.f, 200.f, 30.f).contains(mPos)) {
+            currentState = ACCOUNT_CABINET;
+            return;
+        }
     }
-
     else if (currentState == ACHIEVEMENTS_SCREEN) {
         if (sf::FloatRect(300.f, 340.f, 200.f, 30.f).contains(mPos)) currentState = MAIN_MENU;
     }
@@ -260,7 +263,16 @@ void MenuManager::handleMouseClick(sf::Vector2f mPos) {
         if (sf::FloatRect(300.f, 210.f, 200.f, 30.f).contains(mPos)) {
             if (!editBuffer.empty()) {
                 if (currentState == CHANGE_NAME_SCREEN) {
-                    std::wstring old(inputUsername);
+                    std::string sOldName(currentUser.username);
+                    std::wstring old(sOldName.begin(), sOldName.end());
+                    if (editBuffer == old) {
+                        return;
+                    }
+
+
+                    if (checkUserInDatabase(editBuffer, L"", false) == 3) {
+                        return;
+                    }
 
                     inputUsername = editBuffer;
                     std::wcscpy((wchar_t*)currentUser.username, editBuffer.c_str());
@@ -277,6 +289,7 @@ void MenuManager::handleMouseClick(sf::Vector2f mPos) {
         if (sf::FloatRect(300.f, 260.f, 200.f, 30.f).contains(mPos)) currentState = ACCOUNT_CABINET;
     }
 }
+
 void MenuManager::draw(sf::RenderWindow& window) {
     sf::Color bgCol = (activeTheme == 0) ? sf::Color(10, 10, 25) : sf::Color(225, 230, 240);
     window.clear(bgCol);
@@ -308,6 +321,13 @@ void MenuManager::draw(sf::RenderWindow& window) {
         window.draw(pText);
 
         drawButton(window, sf::Vector2f(300.f, 230.f), L"Âîéòè / Ñîçäàòü", sf::FloatRect(300.f, 230.f, 200.f, 30.f).contains(mPos));
+        if (!authErrorMessage.empty()) {
+            sf::Text errorText(authErrorMessage, menuFont, 12);
+            errorText.setFillColor(sf::Color(220, 60, 60));
+            errorText.setPosition(300.f, 280.f);
+            window.draw(errorText);
+        }
+
     }
     else if (currentState == MAIN_MENU) {
         sf::Text title(L"FIDES: MAIN MENU", menuFont, 16);
@@ -334,34 +354,35 @@ void MenuManager::draw(sf::RenderWindow& window) {
         drawButton(window, sf::Vector2f(300.f, 270.f), L"Íàçàä", sf::FloatRect(300.f, 270.f, 200.f, 30.f).contains(mPos));
     }
     else if (currentState == ACCOUNT_CABINET) {
-        sf::Text title(L"Ëè÷íûé êàáèíåò", menuFont, 14);
-        title.setPosition(330.f, 30.f);
-        title.setFillColor(sf::Color::Green);
+        sf::Text title(L"FIDES: ACCOUNT CABINET", menuFont, 16);
+        title.setFillColor(sf::Color::Cyan);
+        title.setPosition(300.f, 30.f);
         window.draw(title);
 
-        drawButton(window, sf::Vector2f(300.f, 90.f), L"Èçìåíèòü èìÿ", sf::FloatRect(300.f, 90.f, 200.f, 30.f).contains(mPos));
+        drawButton(window, sf::Vector2f(300.f, 90.f), L"Èçìåíèòü ëîãèí", sf::FloatRect(300.f, 90.f, 200.f, 30.f).contains(mPos));
         drawButton(window, sf::Vector2f(300.f, 130.f), L"Èçìåíèòü ïàðîëü", sf::FloatRect(300.f, 130.f, 200.f, 30.f).contains(mPos));
-        drawButton(window, sf::Vector2f(300.f, 170.f), L"Íàñòðîéêè òåìû", sf::FloatRect(300.f, 170.f, 200.f, 30.f).contains(mPos));
+        drawButton(window, sf::Vector2f(300.f, 170.f), L"Îôîðìëåíèå", sf::FloatRect(300.f, 170.f, 200.f, 30.f).contains(mPos));
         drawButton(window, sf::Vector2f(300.f, 210.f), L"Âûéòè èç àêêàóíòà", sf::FloatRect(300.f, 210.f, 200.f, 30.f).contains(mPos));
         drawButton(window, sf::Vector2f(300.f, 260.f), L"Íàçàä â ìåíþ", sf::FloatRect(300.f, 260.f, 200.f, 30.f).contains(mPos));
     }
-    else if (currentState == CHANGE_NAME_SCREEN || currentState == CHANGE_PASS_SCREEN) {
-        sf::Text title(currentState == CHANGE_NAME_SCREEN ? L"ÍÎÂÎÅ ÈÌß:" : L"ÍÎÂÛÉ ÏÀÐÎËÜ:", menuFont, 14);
-        title.setPosition(330.f, 50.f);
-        window.draw(title);
 
-        sf::RectangleShape box(sf::Vector2f(280.f, 25.f));
-        box.setPosition(260.f, 120.f);
-        box.setFillColor(sf::Color(60, 60, 85));
-        window.draw(box);
 
-        sf::Text txt(editBuffer, menuFont, 10);
-        txt.setPosition(270.f, 125.f);
-        window.draw(txt);
+    else if (currentState == THEME_CHOICE) {
+        sf::Text tTitle(L"ÍÀÑÒÐÎÉÊÈ ÇÂÓÊÀ È ÈÍÒÅÐÔÅÉÑÀ", menuFont, 14);
+        tTitle.setPosition(260.f, 40.f);
+        tTitle.setFillColor(activeTheme == 0 ? sf::Color::Cyan : sf::Color::Black);
+        window.draw(tTitle);
 
-        drawButton(window, sf::Vector2f(300.f, 210.f), L"Ñîõðàíèòü", sf::FloatRect(300.f, 210.f, 200.f, 30.f).contains(mPos));
-        drawButton(window, sf::Vector2f(300.f, 260.f), L"Îòìåíà", sf::FloatRect(300.f, 260.f, 200.f, 30.f).contains(mPos));
+
+        drawVolumeSlider(window, L"Ãðîìêîñòü ìóçûêè", currentUser.musicVolume, sf::Vector2f(300.f, 140.f));
+        drawVolumeSlider(window, L"Ãðîìêîñòü çâóêîâ", currentUser.soundVolume, sf::Vector2f(300.f, 190.f));
+
+
+        drawButton(window, sf::Vector2f(300.f, 180.f), L"Ò¸ìíàÿ òåìà", sf::FloatRect(300.f, 180.f, 200.f, 30.f).contains(mPos));
+        drawButton(window, sf::Vector2f(300.f, 220.f), L"Ñâåòëàÿ òåìà", sf::FloatRect(300.f, 220.f, 200.f, 30.f).contains(mPos));
+        drawButton(window, sf::Vector2f(300.f, 280.f), L"Íàçàä", sf::FloatRect(300.f, 280.f, 200.f, 30.f).contains(mPos));
     }
+
     else if (currentState == THEME_CHOICE) {
         sf::Text tTitle(L"ÍÀÑÒÐÎÉÊÈ ÇÂÓÊÀ È ÈÍÒÅÐÔÅÉÑÀ", menuFont, 14);
         tTitle.setPosition(260.f, 40.f);
@@ -443,8 +464,129 @@ void MenuManager::draw(sf::RenderWindow& window) {
         }
         drawButton(window, sf::Vector2f(300.f, 340.f), L"Âåðíóòüñÿ â ìåíþ", sf::FloatRect(300.f, 340.f, 200.f, 30.f).contains(mPos));
     }
+    else if (currentState == CHANGE_NAME_SCREEN || currentState == CHANGE_PASS_SCREEN) {
+        sf::Text title(currentState == CHANGE_NAME_SCREEN ? L"ÈÇÌÅÍÅÍÈÅ ËÎÃÈÍÀ" : L"ÈÇÌÅÍÅÍÈÅ ÏÀÐÎËß", menuFont, 14);
+        title.setPosition(320.f, 50.f);
+        title.setFillColor(activeTheme == 0 ? sf::Color::Cyan : sf::Color::Black);
+        window.draw(title);
+
+        sf::RectangleShape eBox(sf::Vector2f(280.f, 25.f));
+        eBox.setPosition(260.f, 130.f);
+        eBox.setFillColor(sf::Color(60, 60, 85));
+        window.draw(eBox);
+
+        sf::Text eText(editBuffer.empty() ? L"Ââåäèòå íîâûå äàííûå..." : editBuffer, menuFont, 10);
+        eText.setPosition(270.f, 135.f);
+        window.draw(eText);
+
+        drawButton(window, sf::Vector2f(300.f, 210.f), L"Ñîõðàíèòü", sf::FloatRect(300.f, 210.f, 200.f, 30.f).contains(mPos));
+        drawButton(window, sf::Vector2f(300.f, 260.f), L"Íàçàä", sf::FloatRect(300.f, 260.f, 200.f, 30.f).contains(mPos));
+        }
+
     window.display();
 }
+bool MenuManager::isButtonClicked(sf::Vector2f mousePos, sf::Vector2f btnPos, sf::Vector2f btnSize) {
+    return sf::FloatRect(btnPos, btnSize).contains(mousePos);
+}
 
+float MenuManager::handleSliderLogic(sf::Vector2f mousePos, sf::Vector2f trackPos, float trackWidth) {
+    float relativeX = mousePos.x - trackPos.x;
+    float percentage = (relativeX / trackWidth) * 100.f;
+    return std::max(0.f, std::min(100.f, percentage));
+}
+
+void MenuManager::drawVolumeSlider(sf::RenderWindow& window, const std::wstring& title, float volume, sf::Vector2f pos) {
+    sf::Text text(title + L": " + std::to_wstring(int(volume)) + L"%", menuFont, 10);
+    text.setPosition(pos.x, pos.y);
+    text.setFillColor(activeTheme == 0 ? sf::Color::White : sf::Color::Black);
+    window.draw(text);
+
+    sf::RectangleShape track(sf::Vector2f(200.f, 4.f));
+    track.setPosition(pos.x, pos.y + 25.f);
+    track.setFillColor(sf::Color(80, 80, 80));
+    window.draw(track);
+
+    sf::CircleShape handle(6.f);
+    handle.setOrigin(6.f, 6.f);
+    handle.setPosition(pos.x + (volume / 100.f) * 200.f, pos.y + 27.f);
+    handle.setFillColor(sf::Color(100, 30, 180));
+    window.draw(handle);
+}
+
+void MenuManager::updateMenu(sf::RenderWindow& window, sf::View& uiView) {
+    if (currentState == THEME_CHOICE) {
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
+            sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+            sf::Vector2f mUI = window.mapPixelToCoords(mousePos, uiView);
+
+            if (isButtonClicked(mUI, sf::Vector2f(300.f, 140.f), sf::Vector2f(200.f, 25.f))) {
+                currentUser.musicVolume = handleSliderLogic(mUI, sf::Vector2f(300.f, 165.f), 200.f);
+                saveUserToBinary();
+            }
+            else if (isButtonClicked(mUI, sf::Vector2f(300.f, 190.f), sf::Vector2f(200.f, 25.f))) {
+                currentUser.soundVolume = handleSliderLogic(mUI, sf::Vector2f(300.f, 215.f), 200.f);
+                saveUserToBinary();
+            }
+        }
+    }
+}
+
+
+int MenuManager::checkUserInDatabase(const std::wstring& checkName, const std::wstring& checkPass, bool verifyPassword) {
+    std::ifstream in("users_database.bin", std::ios::binary);
+    if (!in.is_open()) return 0;
+
+    UserData tempUser;
+    while (in.read(reinterpret_cast<char*>(&tempUser), sizeof(UserData))) {
+        std::string sName(tempUser.username);
+        std::wstring storedName(sName.begin(), sName.end());
+
+        std::string sPass(tempUser.password);
+        std::wstring storedPass(sPass.begin(), sPass.end());
+
+        if (storedName == checkName) {
+            in.close();
+            if (verifyPassword) {
+                return (storedPass == checkPass) ? 1 : 2;
+            }
+            return 3;
+        }
+    }
+    in.close();
+    return 0;
+}
+
+void MenuManager::handleTextEvent(sf::Event event) {
+    if (event.type == sf::Event::TextEntered) {
+        wchar_t charEntered = static_cast<wchar_t>(event.text.unicode);
+
+        if (currentState == AUTH_SCREEN) {
+            if (isUsernameInputActive) {
+                if (charEntered == L'\b') {
+                    if (!inputUsername.empty()) inputUsername.pop_back();
+                }
+                else if (charEntered >= 32 && inputUsername.size() < 30) {
+                    inputUsername += charEntered;
+                }
+            }
+            else if (isPasswordInputActive) {
+                if (charEntered == L'\b') {
+                    if (!inputPassword.empty()) inputPassword.pop_back();
+                }
+                else if (charEntered >= 32 && inputPassword.size() < 30) {
+                    inputPassword += charEntered;
+                }
+            }
+        }
+        else if (currentState == CHANGE_NAME_SCREEN || currentState == CHANGE_PASS_SCREEN) {
+            if (charEntered == L'\b') {
+                if (!editBuffer.empty()) editBuffer.pop_back();
+            }
+            else if (charEntered >= 32 && editBuffer.size() < 30) {
+                editBuffer += charEntered;
+            }
+        }
+    }
+}
 
 

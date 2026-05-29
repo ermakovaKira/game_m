@@ -5,7 +5,7 @@
 #include "TechScene.h"
 #include "MedScene.h"
 #include <algorithm>
-
+//2300
 GameManager::GameManager()
     : window(sf::VideoMode(800, 400), "Survival RPG - Fides: Point of No Return"),
     gameView(sf::FloatRect(0.f, 0.f, 800.f, 400.f)),
@@ -149,7 +149,6 @@ void GameManager::saveCurrentProgress(int nextSceneNum) {
 }
 
 
-
 void GameManager::run() {
     while (window.isOpen()) {
         float time = clock.getElapsedTime().asMicroseconds() / 700.0f;
@@ -165,77 +164,46 @@ void GameManager::run() {
 
                 if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                     sf::Vector2i mousePos = sf::Mouse::getPosition(window);
-                    sf::Vector2f mCoords = window.mapPixelToCoords(mousePos);
-                    menu.handleMouseClick(mCoords);
+                    sf::Vector2f mUI(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y));
 
-                    if (menu.getState() == MenuManager::MAIN_MENU && sf::FloatRect(300.f, 90.f, 200.f, 28.f).contains(mCoords)) {
-                        menuMusic.stop();
-                        gameMusic.setVolume(menu.getCurrentUser().musicVolume);
-                        gameMusic.play();
-                        story.currentScene = 1;
-                        hero.stats.health = 100.f;
-                        hero.health = 100.f;
-                        hero.inventory.items.clear();
-                        hero.inventory.addItem("Laptop", 1);
-                        hero.sprite.setPosition(1150.f, 210.f);
-                        gameView.setCenter(1150.f, 200.f);
+                    MenuManager::MenuState prevState = menu.getState();
+                    menu.handleMouseClick(mUI);
 
-                        UserData& u = menu.getCurrentUser();
-                        u.lastScene = 1;
-                        u.playerHealth = 100.f;
-                        u.ammoCount = 0;
-                        u.medkitCount = 0;
-                        u.keysCount = 0;
-                        u.laptopCount = 1;
-                        u.noteCount = 0;
-                        u.note2Count = 0;
-                        u.pdaCount = 0;
-                        menu.saveUserToBinary();
-                        menu.setState(MenuManager::GAME_ACTIVE);
-                    }
-
-                    if (menu.getState() == MenuManager::MAIN_MENU && sf::FloatRect(300.f, 130.f, 200.f, 28.f).contains(mCoords))
-                    {
+                    if (prevState == MenuManager::MAIN_MENU && sf::FloatRect(300.f, 90.f, 200.f, 28.f).contains(mUI)) {
                         menuMusic.stop();
                         gameMusic.setVolume(menu.getCurrentUser().musicVolume);
                         gameMusic.play();
 
-                        UserData& u = menu.getCurrentUser();
+                        menu.setState(MenuManager::GAME_ACTIVE);
+                        initNewGameSession();
+                    }
 
-                        story.currentScene = u.lastScene;
-                        hero.stats.health = u.playerHealth;
-                        hero.health = u.playerHealth;
-
-                        hero.inventory.items.clear();
-                        if (u.laptopCount > 0) hero.inventory.addItem("Laptop", u.laptopCount);
-                        if (u.ammoCount > 0) hero.inventory.addItem("Ammo", u.ammoCount);
-                        if (u.medkitCount > 0) hero.inventory.addItem("Medkit", u.medkitCount);
-                        if (u.keysCount > 0) hero.inventory.addItem("Keys", u.keysCount);
-                        if (u.noteCount > 0) hero.inventory.addItem("Note", u.noteCount);
-                        if (u.note2Count > 0) hero.inventory.addItem("Note2", u.note2Count);
-                        if (u.pdaCount > 0) hero.inventory.addItem("PDA", u.pdaCount);
-
-                        if (story.currentScene == 1) hero.sprite.setPosition(1150.f, 210.f);
-                        else if (story.currentScene == 2) hero.sprite.setPosition(2300.f, 210.f);
-                        else if (story.currentScene == 3) hero.sprite.setPosition(1450.f, 210.f);
-                        else hero.sprite.setPosition(80.f, 210.f);
+                    if (prevState == MenuManager::MAIN_MENU && sf::FloatRect(300.f, 130.f, 200.f, 28.f).contains(mUI)) {
+                        menuMusic.stop();
+                        gameMusic.setVolume(menu.getCurrentUser().musicVolume);
+                        gameMusic.play();
+                        applyLoadedUserData();
 
                         menu.setState(MenuManager::GAME_ACTIVE);
                     }
+
                 }
             }
+
+            menu.updateMenu(window, uiView);
+            menuMusic.setVolume(menu.getCurrentUser().musicVolume);
             menu.draw(window);
         }
         else {
             processEvents();
-
-            if (!isGamePaused && !isHeroDead) {
+            if (!isHeroDead) {
                 update(time);
             }
             render();
         }
     }
 }
+
 
 
 void GameManager::processEvents() {
@@ -248,130 +216,55 @@ void GameManager::processEvents() {
 
         if (isHeroDead) {
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-                //  ÕŒœ ¿ Õ¿◊¿“‹ «¿ÕŒ¬Œ
                 if (sf::FloatRect(300.f, 180.f, 200.f, 30.f).contains(m)) {
-                    story.currentScene = 1;
-                    hero.stats.health = hero.health = 100.f;
-                    hero.inventory.items.clear();
-                    hero.inventory.addItem("Laptop", 1);
-                    hero.sprite.setPosition(1150.f, 210.f);
-                    gameView.setCenter(1150.f, 200.f);
-                    isGamePassed = false;
 
-                    story.talkedToMarkStart = false;
-                    story.readLaptopEmail = false;
-                    story.markMovingToExit = false;
-                    story.hallwayIntroPlayed = false;
-                    story.noteRead = false;
-
-                    apartmentScene.mark.init("npc_sprite.png", "mark_move.png", sf::Vector2f(1050.f, 385.f));
-
-
-                    hallwayScene.isLoaded = false;
-                    hallwayScene.noteRead = false;
-                    hallwayScene.isKeyPickedUp = false;
-                    hallwayScene.isAmbushTriggered = false;
-                    hallwayScene.init();
-
-
-                    elevatorScene.isLoaded = false;
-                    elevatorScene.isMinigameActive = false;
-                    elevatorScene.hackSuccess = false;
-                    elevatorScene.isBossSpawned = false;
-                    elevatorScene.bossHealth = 100.f;
-                    elevatorScene.init();
-
-
-                    techScene.isLoaded = false;
-                    techScene.isCodeInputActive = false;
-                    techScene.gasCleared = false;
-                    techScene.init();
-
-
-                    medScene.isLoaded = false;
-                    medScene.defenseActive = false;
-                    medScene.quarantineBypassed = false;
-                    medScene.init();
-
-
-                    serverScene.isLoaded = false;
-                    serverScene.bossSpawned = false;
-                    serverScene.bossDefeated = false;
-                    serverScene.dataDownloaded = false;
-                    serverScene.isEndingSelectionActive = false;
-                    serverScene.selectedEnding = 0;
-                    serverScene.init();
-
-                    UserData& u = menu.getCurrentUser();
-                    u.lastScene = 0;
-                    u.playerHealth = 100.f;
-                    u.ammoCount = 0;
-                    u.medkitCount = 0;
-                    u.keysCount = 0;
-                    u.laptopCount = 1;
-                    u.noteCount = 0;
-                    u.note2Count = 0;
-                    u.pdaCount = 0;
-                    menu.saveUserToBinary();
+                    resetGameSession();
 
                     isHeroDead = false;
                 }
-
-
                 if (sf::FloatRect(300.f, 240.f, 200.f, 30.f).contains(m)) {
-                    saveCurrentProgress(story.currentScene);
-                    gameMusic.stop();
-                    menuMusic.setVolume(menu.getCurrentUser().musicVolume);
-                    menuMusic.play();
-                    isHeroDead = false;
-                    isGamePassed = false;
-                    isGamePaused = false;
-                    menu.setState(MenuManager::MAIN_MENU);
                 }
             }
-            continue;
         }
-
 
         if (isGamePaused) {
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+                sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+
+                sf::Vector2f mUI = window.mapPixelToCoords(mousePos, uiView);
                 if (isSoundMenuOpen) {
-                    if (sf::FloatRect(300.f, 130.f, 200.f, 15.f).contains(m)) {
-                        float newVol = ((m.x - 300.f) / 200.f) * 100.f;
-                        menu.getCurrentUser().musicVolume = std::max(0.f, std::min(100.f, newVol));
+                    if (isButtonClicked(mUI, sf::Vector2f(300.f, 140.f), sf::Vector2f(200.f, 25.f))) {
+                        menu.getCurrentUser().musicVolume = handleSliderLogic(mUI, sf::Vector2f(300.f, 165.f), 200.f);
                         menuMusic.setVolume(menu.getCurrentUser().musicVolume);
                         gameMusic.setVolume(menu.getCurrentUser().musicVolume);
                         menu.saveUserToBinary();
                     }
-                    if (sf::FloatRect(300.f, 180.f, 200.f, 15.f).contains(m)) {
-                        float newVol = ((m.x - 300.f) / 200.f) * 100.f;
-                        menu.getCurrentUser().soundVolume = std::max(0.f, std::min(100.f, newVol));
+                    else if (isButtonClicked(mUI, sf::Vector2f(300.f, 190.f), sf::Vector2f(200.f, 25.f))) {
+                        menu.getCurrentUser().soundVolume = handleSliderLogic(mUI, sf::Vector2f(300.f, 215.f), 200.f);
                         shootSound.setVolume(menu.getCurrentUser().soundVolume);
                         hitSound.setVolume(menu.getCurrentUser().soundVolume);
                         menu.saveUserToBinary();
                     }
-                    if (sf::FloatRect(300.f, 240.f, 200.f, 30.f).contains(m)) {
+                    else if (isButtonClicked(mUI, sf::Vector2f(300.f, 270.f), sf::Vector2f(200.f, 30.f))) {
                         isSoundMenuOpen = false;
                     }
-                    continue;
                 }
 
-                if (sf::FloatRect(300.f, 130.f, 200.f, 30.f).contains(m)) {
-                    isSoundMenuOpen = true;
-                    continue;
-                }
-                if (sf::FloatRect(300.f, 180.f, 200.f, 30.f).contains(m)) {
-                    saveCurrentProgress(story.currentScene);
-                    gameMusic.stop();
-                    menuMusic.setVolume(menu.getCurrentUser().musicVolume);
-                    menuMusic.play();
-                    menu.setState(MenuManager::MAIN_MENU);
-                    isGamePaused = false;
-                    continue;
-                }
-                if (sf::FloatRect(300.f, 240.f, 200.f, 30.f).contains(m)) {
-                    isGamePaused = false;
-                    continue;
+                else {
+                    if (isButtonClicked(mUI, sf::Vector2f(300.f, 130.f), sf::Vector2f(200.f, 30.f))) {
+                        isSoundMenuOpen = true;
+                    }
+                    else if (isButtonClicked(mUI, sf::Vector2f(300.f, 180.f), sf::Vector2f(200.f, 30.f))) {
+                        saveCurrentProgress(story.currentScene);
+                        gameMusic.stop();
+                        menuMusic.setVolume(menu.getCurrentUser().musicVolume);
+                        menuMusic.play();
+                        menu.setState(MenuManager::MAIN_MENU);
+                        isGamePaused = false;
+                    }
+                    else if (isButtonClicked(mUI, sf::Vector2f(300.f, 240.f), sf::Vector2f(200.f, 30.f))) {
+                        isGamePaused = false;
+                    }
                 }
             }
             continue;
@@ -571,6 +464,7 @@ void GameManager::processEvents() {
                                 if (story.currentScene == 2 && !story.hallwayIntroPlayed) {
                                     story.hallwayIntroPlayed = true;
                                 }
+
                             }
                         }
                     }
@@ -664,54 +558,74 @@ void GameManager::processEvents() {
 
 
 void GameManager::update(float time) {
+    if (isGamePaused && isSoundMenuOpen) {
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
 
-        if (hero.stats.health <= 0.f) {
-            isHeroDead = true;
-            isGamePaused = false;
-            return;
-        }
-        if (hero.stats.health < 15.f && hero.stats.health > 0.f) {
-            if (!menu.getCurrentUser().achievements[4]) { 
-                menu.unlockAchievement(4);
-                triggerAchievementNotification(4); 
+            sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+            sf::Vector2f mUI = window.mapPixelToCoords(mousePos, uiView);
+
+            if (isButtonClicked(mUI, sf::Vector2f(300.f, 140.f), sf::Vector2f(200.f, 25.f))) {
+                menu.getCurrentUser().musicVolume = handleSliderLogic(mUI, sf::Vector2f(300.f, 165.f), 200.f);
+                menuMusic.setVolume(menu.getCurrentUser().musicVolume);
+                gameMusic.setVolume(menu.getCurrentUser().musicVolume);
+                menu.saveUserToBinary();
+            }
+            else if (isButtonClicked(mUI, sf::Vector2f(300.f, 190.f), sf::Vector2f(200.f, 25.f))) {
+                menu.getCurrentUser().soundVolume = handleSliderLogic(mUI, sf::Vector2f(300.f, 215.f), 200.f);
+                shootSound.setVolume(menu.getCurrentUser().soundVolume);
+                hitSound.setVolume(menu.getCurrentUser().soundVolume);
+                menu.saveUserToBinary();
             }
         }
+    }
 
-        if (isHeroDead) return;
-
-        float diffMod = 1.0f;
-        int currentSetting = menu.getCurrentUser().difficultySetting;
-        switch (currentSetting) {
-        case 0: diffMod = 0.5f; break;
-        case 1: diffMod = 1.0f; break;
-        case 2: diffMod = 1.6f; break;
-        default: diffMod = 1.0f; break;
+    if (hero.stats.health <= 0.f) {
+        isHeroDead = true;
+        isGamePaused = false;
+        return;
+    }
+    if (hero.stats.health < 15.f && hero.stats.health > 0.f) {
+        if (!menu.getCurrentUser().achievements[4]) {
+            menu.unlockAchievement(4);
+            triggerAchievementNotification(4);
         }
+    }
+
+    if (isHeroDead) return;
+
+    float diffMod = 1.0f;
+    int currentSetting = menu.getCurrentUser().difficultySetting;
+    switch (currentSetting) {
+    case 0: diffMod = 0.5f; break;
+    case 1: diffMod = 1.0f; break;
+    case 2: diffMod = 1.6f; break;
+    default: diffMod = 1.0f; break;
+    }
 
 
-        if (!isGamePaused && !dialogue.isOpen && !showInventory) {
-            hero.update(time);
-        }
+    if (!isGamePaused && !dialogue.isOpen && !showInventory) {
+        hero.update(time);
+    }
 
-        if (story.currentScene == 6 && serverScene.selectedEnding == 1) {
-            hero.sprite.setPosition(150.f, 110.f);
-        }
+    if (story.currentScene == 6 && serverScene.selectedEnding == 1) {
+        hero.sprite.setPosition(150.f, 110.f);
+    }
 
 
-    
+
     dialogue.update(time);
 
 
     if (story.currentScene == 1) {
         apartmentScene.update(time, hero, story);
+        syncGameCamera(400.f, 1184.f);
         float playerX = hero.sprite.getPosition().x;
-        float cameraX = std::max(400.f, std::min(1184.f, playerX));
-        gameView.setCenter(cameraX, 200.f);
-
         if (playerX < 15.f) {
             if (story.talkedToMarkStart && hero.inventory.items["Ammo"] > 0) {
                 hallwayScene.init();
                 story.currentScene = 2;
+                story.hallwayIntroPlayed = false;
+
                 hero.sprite.setPosition(2300.f, 210.f);
                 gameView.setCenter(2000.f, 200.f);
                 window.setView(gameView);
@@ -720,7 +634,6 @@ void GameManager::update(float time) {
                 sf::FloatRect textBounds = questText.getLocalBounds();
                 questText.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
                 questText.setPosition(400.f, 31.f);
-
                 dialogue.startDialogue(dialogueDb.getDialogue("hallway_intro"));
             }
             else {
@@ -731,64 +644,78 @@ void GameManager::update(float time) {
             }
         }
     }
+
     else if (story.currentScene == 2) {
         if (!hallwayScene.isLoaded) {
             hallwayScene.init();
+            dialogue.startDialogue(dialogueDb.getDialogue("hallway_intro"));
+            gameView.setCenter(2000.f, 200.f);
+            window.setView(gameView);
+            return;
         }
+
+        if (!dialogue.isOpen && !story.hallwayIntroPlayed) {
+            story.hallwayIntroPlayed = true;
+        }
+
         float playerX = hero.sprite.getPosition().x;
 
-        if (!hallwayScene.isAmbushTriggered && playerX <= 1250.f && !dialogue.isOpen) {
+        if (!hallwayScene.isAmbushTriggered && playerX <= 1250.f && !dialogue.isOpen && story.hallwayIntroPlayed) {
             hallwayScene.isAmbushTriggered = true;
             hallwayScene.zombieAmbush.setPosition(2380.f, 385.f);
             dialogue.startDialogue(dialogueDb.getDialogue("hallway_ambush_warning"));
         }
 
+        hallwayScene.updateDistances(playerX, dialogue.isOpen, story, hero.inventory.items["Keys"]);
         hallwayScene.update(time, hero, story, dialogue, dialogueDb);
-        float cameraX = std::max(400.f, std::min(2000.f, playerX));
-        gameView.setCenter(cameraX, 200.f);
 
-        if (story.hallwayIntroPlayed) {
+        if (story.hallwayIntroPlayed && !dialogue.isOpen) {
+            if (playerX > 1800.f) {
+                syncGameCamera(2000.f, 2000.f);
+            }
+            else {
+                syncGameCamera(400.f, 2000.f);
+            }
+        }
+        else {
+            window.setView(gameView);
+        }
+
+        float cameraX = gameView.getCenter().x;
+        if (story.hallwayIntroPlayed && !dialogue.isOpen) {
             hallwayScene.zombie.checkPlayerCollision(hero, 12.f, diffMod, dialogue.isOpen, hitSound);
         }
         if (hallwayScene.isAmbushTriggered) {
             hallwayScene.zombieAmbush.checkPlayerCollision(hero, 15.f, diffMod, dialogue.isOpen, hitSound);
         }
-
-
-
-
         spawnPlayerBullet();
-
-
         checkBulletCollisions(time, hallwayScene.zombie, cameraX, L"œŒœ¿ƒ¿Õ»≈!", sf::Color::Yellow);
         checkBulletCollisions(time, hallwayScene.zombieAmbush, cameraX, L" –»“  ”–‹≈–”!", sf::Color::Red);
     }
+
 
     else if (story.currentScene == 3) {
         if (!elevatorScene.isLoaded) {
             elevatorScene.init();
         }
         elevatorScene.update(time, hero, story, dialogue, dialogueDb);
-        float playerX = hero.sprite.getPosition().x;
-        float cameraX = std::max(400.f, std::min(1200.f, playerX));
-        gameView.setCenter(cameraX, 200.f);
+
+        syncGameCamera(400.f, 1200.f);
+        float cameraX = gameView.getCenter().x;
 
         if (elevatorScene.isBossSpawned && elevatorScene.bossHealth > 0 && !dialogue.isOpen) {
             if (hero.sprite.getGlobalBounds().intersects(elevatorScene.bossSprite.getGlobalBounds())) {
-
                 if (hero.invulTimer <= 0.f) {
                     hero.stats.health -= 25.f;
                     hero.health = hero.stats.health;
-
                     hitSound.setVolume(menu.getCurrentUser().soundVolume);
                     hitSound.play();
-
                     hero.showMessage(L"¬A— ”ƒA–»À»!", sf::Color::Red);
                     hero.invulTimer = 50.f;
                 }
-
                 float bossX = elevatorScene.bossSprite.getPosition().x;
                 float bossY = elevatorScene.bossSprite.getPosition().y;
+                float playerX = hero.sprite.getPosition().x;
                 if (bossX > playerX) {
                     elevatorScene.bossSprite.setPosition(bossX + 110.f, bossY);
                 }
@@ -797,14 +724,10 @@ void GameManager::update(float time) {
                 }
             }
         }
-
-
         spawnPlayerBullet();
-
         for (size_t i = 0; i < activeBullets.size();) {
             activeBullets[i].update(time);
             bool hit = false;
-
             if (elevatorScene.isBossSpawned && elevatorScene.bossHealth > 0) {
                 if (activeBullets[i].sprite.getGlobalBounds().intersects(elevatorScene.bossSprite.getGlobalBounds())) {
                     elevatorScene.bossHealth -= 20.f;
@@ -812,7 +735,6 @@ void GameManager::update(float time) {
                     hit = true;
                 }
             }
-
             float bX = activeBullets[i].sprite.getPosition().x;
             if (hit || bX < cameraX - 450.f || bX > cameraX + 450.f) {
                 activeBullets.erase(activeBullets.begin() + i);
@@ -822,31 +744,27 @@ void GameManager::update(float time) {
             }
         }
     }
+
+
     else if (story.currentScene == 4) {
         if (!techClockStarted) {
             techSceneClock.restart();
             techClockStarted = true;
         }
-
         if (!techScene.isLoaded) {
             techScene.init();
         }
-
         techScene.update(time, hero, story, dialogue, dialogueDb);
 
-        float playerX = hero.sprite.getPosition().x;
-        float cameraX = std::max(400.f, std::min(1200.f, playerX));
-        gameView.setCenter(cameraX, 200.f);
+        syncGameCamera(400.f, 1200.f);
 
         if (techScene.nearValve && techScene.gasCleared && !dialogue.isOpen) {
             if (techSceneClock.getElapsedTime().asSeconds() <= 15.f) {
                 if (!menu.getCurrentUser().achievements[7]) {
                     menu.unlockAchievement(7);
-                    triggerAchievementNotification(7); 
+                    triggerAchievementNotification(7);
                 }
-
             }
-
             story.currentScene = 5;
             medScene.init();
             hero.sprite.setPosition(80.f, 210.f);
@@ -855,50 +773,43 @@ void GameManager::update(float time) {
             saveCurrentProgress(4);
             return;
         }
-
         techScene.handleInteraction(hero, story, dialogue, dialogueDb);
         }
+
 
     else if (story.currentScene == 5) {
         if (!medScene.isLoaded) {
             medScene.init();
         }
         medScene.update(time, hero, story, dialogue, dialogueDb);
-        float playerX = hero.sprite.getPosition().x;
-        float cameraX = std::max(400.f, std::min(1200.f, playerX));
-        gameView.setCenter(cameraX, 200.f);
+
+        syncGameCamera(400.f, 1200.f);
+        float cameraX = gameView.getCenter().x;
+
         medScene.zombie1.checkPlayerCollision(hero, 12.f, diffMod, !medScene.defenseActive || medScene.quarantineBypassed || dialogue.isOpen, hitSound);
         medScene.zombie2.checkPlayerCollision(hero, 12.f, diffMod, !medScene.defenseActive || medScene.quarantineBypassed || dialogue.isOpen, hitSound);
-
-
-
-
-
         spawnPlayerBullet();
-
-
         checkBulletCollisions(time, medScene.zombie1, cameraX, L"”–ŒÕ œŒ «¿–¿∆≈ÕÕŒÃ” ¬–¿◊”!", sf::Color::Yellow);
         checkBulletCollisions(time, medScene.zombie2, cameraX, L"”–ŒÕ œŒ «¿–¿∆≈ÕÕŒÃ” ¬–¿◊”!", sf::Color::Yellow);
-    }
+        }
+
+
     else if (story.currentScene == 6) {
-        if (!serverScene.isLoaded) serverScene.init();
-        serverScene.update(time, hero, story, dialogue, dialogueDb);
-        float playerX = hero.sprite.getPosition().x;
+            if (!serverScene.isLoaded) serverScene.init();
+            serverScene.update(time, hero, story, dialogue, dialogueDb);
 
-        if (serverScene.selectedEnding == 1) {
-            gameView.setCenter(400.f, 200.f);
-        }
-        else {
-            float cameraX = std::max(400.f, std::min(1200.f, playerX));
-            gameView.setCenter(cameraX, 200.f);
-        }
+            if (serverScene.selectedEnding == 1) {
+                gameView.setCenter(400.f, 200.f);
+            }
+            else {
+                syncGameCamera(400.f, 1200.f);
+            }
 
-        serverScene.finalBoss.checkPlayerCollision(hero, 20.f, diffMod, !serverScene.bossSpawned || serverScene.bossDefeated || dialogue.isOpen, hitSound);
+            serverScene.finalBoss.checkPlayerCollision(hero, 20.f, diffMod, !serverScene.bossSpawned || serverScene.bossDefeated || dialogue.isOpen, hitSound);
+            spawnPlayerBullet();
+            checkBulletCollisions(time, serverScene.finalBoss, gameView.getCenter().x, L" –»“ œŒ Œ¡⁄≈ “”-00!", sf::Color::Red);
+            }
 
-
-        spawnPlayerBullet();
-        checkBulletCollisions(time, serverScene.finalBoss, gameView.getCenter().x, L" –»“ œŒ Œ¡⁄≈ “”-00!", sf::Color::Red);
-    }
     questText.setString(story.getCurrentQuestText());
     sf::FloatRect textBounds = questText.getLocalBounds();
     questText.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
@@ -984,7 +895,9 @@ void GameManager::render() {
     playerHPBar.update(hero.stats.health, 100.f, sf::Vector2f(20.f, 20.f));
     playerHPBar.draw(window);
 
-    sf::Vector2f mPos = window.mapPixelToCoords(sf::Mouse::getPosition(window), uiView);
+    sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
+    sf::Vector2f mPos = window.mapPixelToCoords(pixelPos, uiView);
+
 
     auto drawInterfaceBtn = [&](sf::Vector2f pos, sf::Vector2f size, const std::wstring& text, bool isH) {
         sf::RectangleShape b(size); b.setPosition(pos);
@@ -1000,12 +913,26 @@ void GameManager::render() {
     }
 
     if (isGamePaused) {
-        sf::RectangleShape dim(sf::Vector2f(800.f, 400.f)); dim.setFillColor(sf::Color(0, 0, 0, 180)); window.draw(dim);
-        sf::Text pTitle(L"Õ‡ÒÚÓÈÍË", questFont, 16); pTitle.setPosition(350.f, 60.f); window.draw(pTitle);
+        window.setView(uiView);
+        sf::RectangleShape dim(sf::Vector2f(800.f, 400.f));
+        dim.setFillColor(sf::Color(0, 0, 0, 180));
+        window.draw(dim);
 
-        drawInterfaceBtn(sf::Vector2f(300.f, 130.f), sf::Vector2f(200.f, 30.f), L" Õ‡ÒÚÓÈÍË Á‚ÛÍ‡", sf::FloatRect(300.f, 130.f, 200.f, 30.f).contains(mPos));
-        drawInterfaceBtn(sf::Vector2f(300.f, 180.f), sf::Vector2f(200.f, 30.f), L"—Óı‡ÌËÚ¸ Ë ‚˚ÈÚË", sf::FloatRect(300.f, 180.f, 200.f, 30.f).contains(mPos));
-        drawInterfaceBtn(sf::Vector2f(300.f, 240.f), sf::Vector2f(200.f, 30.f), L"  ¬ÂÌÛÚ¸Òˇ Í Ë„Â", sf::FloatRect(300.f, 240.f, 200.f, 30.f).contains(mPos));
+        if (isSoundMenuOpen) {
+            sf::Text pTitle(L"Õ‡ÒÚÓÈÍË Á‚ÛÍ‡", questFont, 16);
+            pTitle.setPosition(310.f, 50.f);
+            window.draw(pTitle);
+
+            drawVolumeSlider(L"√ÓÏÍÓÒÚ¸ ÏÛÁ˚ÍË", menu.getCurrentUser().musicVolume, sf::Vector2f(300.f, 140.f));
+            drawVolumeSlider(L"√ÓÏÍÓÒÚ¸ Á‚ÛÍÓ‚", menu.getCurrentUser().soundVolume, sf::Vector2f(300.f, 190.f));
+
+            drawInterfaceBtn(sf::Vector2f(300.f, 270.f), sf::Vector2f(200.f, 30.f), L"      Õ‡Á‡‰", isButtonClicked(mPos, sf::Vector2f(300.f, 270.f), sf::Vector2f(200.f, 30.f)));
+        }
+        else {
+            drawInterfaceBtn(sf::Vector2f(300.f, 130.f), sf::Vector2f(200.f, 30.f), L" Õ‡ÒÚÓÈÍË Á‚ÛÍ‡", isButtonClicked(mPos, sf::Vector2f(300.f, 130.f), sf::Vector2f(200.f, 30.f)));
+            drawInterfaceBtn(sf::Vector2f(300.f, 180.f), sf::Vector2f(200.f, 30.f), L"—Óı‡ÌËÚ¸ Ë ‚˚ÈÚË", isButtonClicked(mPos, sf::Vector2f(300.f, 180.f), sf::Vector2f(200.f, 30.f)));
+            drawInterfaceBtn(sf::Vector2f(300.f, 240.f), sf::Vector2f(200.f, 30.f), L" ¬ÂÌÛÚ¸Òˇ Í Ë„Â", isButtonClicked(mPos, sf::Vector2f(300.f, 240.f), sf::Vector2f(200.f, 30.f)));
+        }
     }
 
     if (isHeroDead) {
@@ -1062,6 +989,10 @@ void GameManager::render() {
             showAchievementPopup = false;
         }
     }
+    if (!isGamePaused && menu.getState() == MenuManager::GAME_ACTIVE) {
+        window.setView(gameView);
+    }
+
 
     window.display(); 
 
@@ -1106,3 +1037,130 @@ void GameManager::triggerAchievementNotification(int index) {
     }
 }
 
+bool GameManager::isButtonClicked(sf::Vector2f mousePos, sf::Vector2f btnPos, sf::Vector2f btnSize) {
+    return sf::FloatRect(btnPos, btnSize).contains(mousePos);
+}
+
+float GameManager::handleSliderLogic(sf::Vector2f mousePos, sf::Vector2f trackPos, float trackWidth) {
+    float relativeX = mousePos.x - trackPos.x;
+    float percentage = (relativeX / trackWidth) * 100.f;
+    return std::max(0.f, std::min(100.f, percentage));
+}
+
+void GameManager::drawVolumeSlider(const std::wstring& title, float volume, sf::Vector2f pos) {
+    sf::Text text(title + L": " + std::to_wstring(int(volume)) + L"%", questFont, 11);
+    text.setPosition(pos.x, pos.y);
+    window.draw(text);
+
+    sf::RectangleShape track(sf::Vector2f(200.f, 4.f));
+    track.setPosition(pos.x, pos.y + 25.f);
+    track.setFillColor(sf::Color(80, 80, 80));
+    window.draw(track);
+
+    sf::CircleShape handle(6.f);
+    handle.setOrigin(6.f, 6.f);
+    handle.setPosition(pos.x + (volume / 100.f) * 200.f, pos.y + 27.f);
+    handle.setFillColor(sf::Color(100, 30, 180));
+    window.draw(handle);
+}
+void GameManager::resetGameSession() {
+    story.currentScene = 1;
+    hero.stats.health = 100.f;
+    hero.health = 100.f;
+    hero.inventory.items.clear();
+    hero.inventory.addItem("Laptop", 1);
+    hero.sprite.setPosition(1150.f, 210.f);
+    gameView.setCenter(1150.f, 200.f);
+    isGamePassed = false;
+    story.talkedToMarkStart = false;
+    story.readLaptopEmail = false;
+    story.markMovingToExit = false;
+    story.hallwayIntroPlayed = false;
+    story.noteRead = false;
+    apartmentScene.mark.init("npc_sprite.png", "mark_move.png", sf::Vector2f(1050.f, 385.f));
+    hallwayScene.isLoaded = false;
+    hallwayScene.noteRead = false;
+    hallwayScene.isKeyPickedUp = false;
+    hallwayScene.isAmbushTriggered = false;
+    hallwayScene.init();
+    elevatorScene.isLoaded = false;
+    elevatorScene.isMinigameActive = false;
+    elevatorScene.hackSuccess = false;
+    elevatorScene.isBossSpawned = false;
+    elevatorScene.bossHealth = 100.f;
+    elevatorScene.init();
+    techScene.isLoaded = false;
+    techScene.isCodeInputActive = false;
+    techScene.gasCleared = false;
+    techScene.init();
+    medScene.isLoaded = false;
+    medScene.defenseActive = false;
+    medScene.quarantineBypassed = false;
+    medScene.init();
+    serverScene.isLoaded = false;
+    serverScene.bossSpawned = false;
+    serverScene.bossDefeated = false;
+    serverScene.dataDownloaded = false;
+    serverScene.isEndingSelectionActive = false;
+    serverScene.selectedEnding = 0;
+    serverScene.init();
+
+    UserData& u = menu.getCurrentUser();
+    u.lastScene = 0;
+    u.playerHealth = 100.f;
+    u.ammoCount = 0;
+    u.medkitCount = 0;
+    u.keysCount = 0;
+    u.laptopCount = 1;
+    u.noteCount = 0;
+    u.note2Count = 0;
+    u.pdaCount = 0;
+    menu.saveUserToBinary();
+}
+void GameManager::applyLoadedUserData() {
+    UserData& u = menu.getCurrentUser();
+    story.currentScene = u.lastScene;
+    hero.stats.health = u.playerHealth;
+    hero.health = u.playerHealth;
+    hero.inventory.items.clear();
+
+    if (u.laptopCount > 0) hero.inventory.addItem("Laptop", u.laptopCount);
+    if (u.ammoCount > 0) hero.inventory.addItem("Ammo", u.ammoCount);
+    if (u.medkitCount > 0) hero.inventory.addItem("Medkit", u.medkitCount);
+    if (u.keysCount > 0) hero.inventory.addItem("Keys", u.keysCount);
+    if (u.noteCount > 0) hero.inventory.addItem("Note", u.noteCount);
+    if (u.note2Count > 0) hero.inventory.addItem("Note2", u.note2Count);
+    if (u.pdaCount > 0) hero.inventory.addItem("PDA", u.pdaCount);
+
+    switch (story.currentScene) {
+    case 1:
+        hero.sprite.setPosition(1150.f, 210.f);
+        break;
+    case 2:
+        hero.sprite.setPosition(2300.f, 210.f); 
+        break;
+    case 3:
+        hero.sprite.setPosition(1450.f, 210.f);
+        break;
+    default:
+        hero.sprite.setPosition(80.f, 210.f);
+        break;
+    }
+
+}
+
+
+void GameManager::syncGameCamera(float minX, float maxX) {
+    float playerX = hero.sprite.getPosition().x;
+    float cameraX = std::max(minX, std::min(maxX, playerX));
+    gameView.setCenter(cameraX, 200.f);
+}
+
+void GameManager::initNewGameSession() {
+    resetGameSession();
+    story.currentScene = 1;
+    hero.stats.health = 100.f;
+    hero.health = 100.f;
+    hero.sprite.setPosition(1150.f, 210.f);
+    gameView.setCenter(1150.f, 200.f);
+}
