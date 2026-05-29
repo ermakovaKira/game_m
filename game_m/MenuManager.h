@@ -70,6 +70,9 @@ private:
     int checkUserInDatabase(const std::wstring& checkName, const std::wstring& checkPass, bool verifyPassword);
     std::wstring authErrorMessage;
 public:
+    sf::Texture backgroundTex;
+    sf::Sprite backgroundSprite;
+
     void updateMenu(sf::RenderWindow& window, sf::View& uiView);
     MenuManager();
     MenuState getState() const;
@@ -81,6 +84,7 @@ public:
     void saveUserToBinary(std::wstring oldName = L"");
     void handleTextEvent(sf::Event event);
     void handleMouseClick(sf::Vector2f mPos);
-    void draw(sf::RenderWindow& window);
+    void draw(sf::RenderWindow& window, sf::View& uiView);
+
 };
 #endif

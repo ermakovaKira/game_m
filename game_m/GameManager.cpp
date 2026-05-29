@@ -165,7 +165,6 @@ void GameManager::run() {
                 if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                     sf::Vector2i mousePos = sf::Mouse::getPosition(window);
                     sf::Vector2f mUI(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y));
-
                     MenuManager::MenuState prevState = menu.getState();
                     menu.handleMouseClick(mUI);
 
@@ -173,26 +172,28 @@ void GameManager::run() {
                         menuMusic.stop();
                         gameMusic.setVolume(menu.getCurrentUser().musicVolume);
                         gameMusic.play();
-
                         menu.setState(MenuManager::GAME_ACTIVE);
                         initNewGameSession();
                     }
-
                     if (prevState == MenuManager::MAIN_MENU && sf::FloatRect(300.f, 130.f, 200.f, 28.f).contains(mUI)) {
                         menuMusic.stop();
                         gameMusic.setVolume(menu.getCurrentUser().musicVolume);
                         gameMusic.play();
                         applyLoadedUserData();
-
                         menu.setState(MenuManager::GAME_ACTIVE);
                     }
-
                 }
             }
 
             menu.updateMenu(window, uiView);
             menuMusic.setVolume(menu.getCurrentUser().musicVolume);
-            menu.draw(window);
+
+            window.clear(sf::Color(15, 15, 25));
+            menu.draw(window, uiView); 
+            window.display();
+
+            continue;
+
         }
         else {
             processEvents();
@@ -203,8 +204,6 @@ void GameManager::run() {
         }
     }
 }
-
-
 
 void GameManager::processEvents() {
     sf::Event event;
@@ -816,11 +815,21 @@ void GameManager::update(float time) {
     questText.setPosition(400.f, 31.f);
 }
 void GameManager::render() {
-    window.clear(sf::Color::Black);
-    window.setView(gameView);
-    if (story.currentScene == 1) {
-        apartmentScene.draw(window);
-    }
+
+        window.clear(sf::Color::Black);
+
+
+        if (menu.getState() != MenuManager::GAME_ACTIVE) {
+            window.setView(uiView);
+            menu.draw(window, uiView);
+            window.display();
+            return;
+        }
+
+        window.setView(gameView);
+        if (story.currentScene == 1) {
+            apartmentScene.draw(window);
+        }
     else if (story.currentScene == 2) {
         hallwayScene.draw(window);
         for (size_t i = 0; i < activeBullets.size(); i++) {
@@ -992,7 +1001,6 @@ void GameManager::render() {
     if (!isGamePaused && menu.getState() == MenuManager::GAME_ACTIVE) {
         window.setView(gameView);
     }
-
 
     window.display(); 
 
